@@ -355,27 +355,32 @@ input[type="file"] { display: none; }
 <!-- ════ HOME ════ -->
 <div class="pg on" id="pg-home">
   <div class="hero">
-    <div class="hero-label">💳 Gastado en tarjetas</div>
-    <div class="hero-amount" id="heroSpent">$0</div>
-    <div class="hero-sub" id="heroSub">este mes</div>
-    <div class="hero-divider"></div>
-    <div class="hero-row">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
       <div>
-        <div class="hero-stat-label">💵 Líquido hoy</div>
-        <div class="hero-stat-val" id="heroLiquid">$0</div>
+        <div class="hero-label">Gastado en tarjetas</div>
+        <div style="font-size:28px;font-weight:800;letter-spacing:-0.5px;margin-top:2px" id="heroSpent">$0</div>
+        <div class="hero-sub" id="heroSub">este mes</div>
       </div>
       <div style="text-align:right">
-        <div class="hero-stat-label">🎯 Fin de mes</div>
-        <div class="hero-stat-val" id="heroProjection">$0</div>
+        <div class="hero-label">Fin de mes</div>
+        <div style="font-size:22px;font-weight:700;letter-spacing:-0.5px;margin-top:2px;opacity:0.95" id="heroProjection">$0</div>
+      </div>
+    </div>
+    <div class="hero-divider"></div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:14px">
+      <div>
+        <div class="hero-label">Líquido hoy</div>
+        <div style="font-size:16px;font-weight:700;margin-top:2px" id="heroLiquid">$0</div>
+      </div>
+      <div style="text-align:right">
+        <div class="hero-label">Meta ahorro</div>
+        <div style="font-size:16px;font-weight:700;margin-top:2px" id="heroGoalAmt">$0</div>
       </div>
     </div>
     <div class="hero-bar-track">
       <div class="hero-bar-fill" id="heroBar" style="width:0%"></div>
     </div>
-    <div style="display:flex;justify-content:space-between;font-size:10px;opacity:0.7;margin-top:5px;font-weight:600">
-      <span id="heroBarPct">0% de meta ahorro</span>
-      <span id="heroGoalAmt">Meta: $0</span>
-    </div>
+    <div style="font-size:10px;opacity:0.7;margin-top:5px;font-weight:600" id="heroBarPct">0% de meta ahorro</div>
   </div>
 
   <div id="installBanner" class="install-banner" style="display:none">
@@ -467,11 +472,17 @@ input[type="file"] { display: none; }
 
 <!-- ════ PROYECCIÓN ════ -->
 <div class="pg" id="pg-projection">
-  <div class="sec-title">Proyección 12 meses</div>
-  <div class="hero" style="background:linear-gradient(135deg,#00C896,#00A87A)">
-    <div class="hero-label">Acumulado en mayo 2027</div>
-    <div class="hero-amount">$57.924.168</div>
-    <div class="hero-sub">ahorro promedio ~$4.8M/mes</div>
+  <div class="sec-title">Gasto mensual por categoría</div>
+  <div class="card" style="padding:16px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px" id="chartLegend"></div>
+    <canvas id="spendChart" style="width:100%;height:240px"></canvas>
+  </div>
+
+  <div class="sec-title">Proyección ahorro 12 meses</div>
+  <div class="card" style="background:linear-gradient(135deg,#00C896,#00A87A);border:none;padding:18px">
+    <div class="hero-label" style="color:rgba(255,255,255,0.8)">Acumulado en mayo 2027</div>
+    <div style="font-size:28px;font-weight:800;color:white;letter-spacing:-0.5px;margin:4px 0">$57.924.168</div>
+    <div style="font-size:12px;color:rgba(255,255,255,0.75);font-weight:500">ahorro promedio ~$4.8M/mes</div>
   </div>
 
   <div class="sec-title">Cuotas que terminan</div>
@@ -787,8 +798,8 @@ function renderHome() {
   document.getElementById('heroLiquid').textContent = fmt(liquidToday);
   document.getElementById('heroProjection').textContent = fmt(Math.max(0, projection));
   document.getElementById('heroBar').style.width = Math.min(100, savingsPct) + '%';
-  document.getElementById('heroBarPct').textContent = savingsPct + '% de meta ahorro';
-  document.getElementById('heroGoalAmt').textContent = 'Meta: ' + fmt(S.savingsGoal);
+  document.getElementById('heroBarPct').textContent = savingsPct + '% de meta ahorro · ' + txs.length + ' movimientos';
+  document.getElementById('heroGoalAmt').textContent = fmt(S.savingsGoal);
 
   renderAlerts(spent, budget, txs, isJuly);
   renderCategories(txs);
@@ -942,7 +953,7 @@ async function runAIAnalysis() {
   const budget = totalIncome - S.savingsGoal;
   const summary = Object.entries(byCat).filter(([,v]) => v > 0).map(([cat, val]) => cat + ': ' + fmt(val) + ' (límite ' + fmt(S.limits[cat] || 0) + ')').join('\n');
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('https://barthabank-api.hbarthabure.workers.dev', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6', max_tokens: 1000,
@@ -1006,7 +1017,111 @@ function renderCompare() {
 }
 
 // ── PROJECTION ──
+const CAT_COLORS = {
+  '🛒 Supermercado': '#6C63FF',
+  '🍔 Comida': '#FF6B6B',
+  '🚗 Transporte': '#FFB020',
+  '🎬 Entretención': '#00C896',
+  '👕 Ropa': '#FF8CC8',
+  '💊 Salud': '#38BDF8',
+  '🏠 Servicios': '#A78BFA',
+  '☕ Café': '#FB923C',
+  '📦 Mercado Libre': '#34D399',
+  '📦 Otros': '#94A3B8',
+};
+
+function renderSpendChart() {
+  const canvas = document.getElementById('spendChart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth - 32;
+  const H = 220;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+
+  // Build monthly spend data
+  const months = [];
+  const now = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    const label = d.toLocaleDateString('es-CL', { month: 'short' });
+    const txs = S.transactions.filter(t => t.date && t.date.startsWith(key) && t.amount < 0);
+    const byCat = {};
+    for (const cat of Object.keys(S.limits)) byCat[cat] = 0;
+    for (const t of txs) byCat[t.category] = (byCat[t.category] || 0) + Math.abs(t.amount);
+    months.push({ key, label, byCat, total: Object.values(byCat).reduce((a,b)=>a+b,0) });
+  }
+
+  const maxTotal = Math.max(...months.map(m => m.total), 1000000);
+  const pad = { top: 20, right: 8, bottom: 30, left: 8 };
+  const chartW = W - pad.left - pad.right;
+  const chartH = H - pad.top - pad.bottom;
+  const barW = (chartW / months.length) * 0.65;
+  const gap = chartW / months.length;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid lines
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + chartH - (i / 4) * chartH;
+    ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(W - pad.right, y);
+    ctx.stroke();
+  }
+
+  // Bars
+  months.forEach((m, i) => {
+    const x = pad.left + i * gap + (gap - barW) / 2;
+    let yOffset = pad.top + chartH;
+    const cats = Object.entries(m.byCat).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
+
+    cats.forEach(([cat, val]) => {
+      const barH = (val / maxTotal) * chartH;
+      yOffset -= barH;
+      ctx.fillStyle = CAT_COLORS[cat] || '#94A3B8';
+      ctx.beginPath();
+      if (yOffset === pad.top + chartH - barH) {
+        ctx.roundRect(x, yOffset, barW, barH, [4, 4, 0, 0]);
+      } else {
+        ctx.rect(x, yOffset, barW, barH);
+      }
+      ctx.fill();
+    });
+
+    // Month label
+    ctx.fillStyle = '#6B6C80';
+    ctx.font = '600 10px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(m.label, x + barW/2, H - pad.bottom + 14);
+
+    // Amount on top
+    if (m.total > 0) {
+      ctx.fillStyle = '#1A1B2E';
+      ctx.font = '600 9px Inter, sans-serif';
+      ctx.fillText('$' + Math.round(m.total/1000) + 'K', x + barW/2, pad.top + chartH - (m.total/maxTotal)*chartH - 4);
+    }
+  });
+
+  // Legend
+  const legend = document.getElementById('chartLegend');
+  const activeCats = Object.keys(S.limits).filter(cat => months.some(m => m.byCat[cat] > 0));
+  legend.innerHTML = activeCats.map(cat =>
+    '<div style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:var(--text2)">' +
+    '<div style="width:8px;height:8px;border-radius:2px;background:' + (CAT_COLORS[cat]||'#94A3B8') + ';flex-shrink:0"></div>' +
+    cat.split(' ').slice(1).join(' ') + '</div>'
+  ).join('');
+}
+
 function renderProjection() {
+  renderSpendChart();
   const timeline = document.getElementById('quotasTimeline');
   timeline.innerHTML = QUOTAS_ENDING.map(q =>
     '<div class="card card-sm" style="margin-bottom:8px;' + (q.importante ? 'border-color:rgba(0,200,150,0.3);background:rgba(0,200,150,0.04)' : '') + '">' +
@@ -1118,7 +1233,7 @@ async function handleScan(event) {
   document.getElementById('scanResult').innerHTML = '<div class="loading"><div class="spinner"></div>Claude está leyendo tu imagen...</div>';
   const base64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = e => res(e.target.result.split(',')[1]); r.onerror = rej; r.readAsDataURL(file); });
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('https://barthabank-api.hbarthabure.workers.dev', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6', max_tokens: 1000,
@@ -1169,7 +1284,10 @@ function confirmScan(txs) {
 // ── NOTIFICATIONS ──
 async function toggleNotif() {
   if (!S.notifEnabled) {
-    if (!('Notification' in window)) { toast('Las notificaciones requieren instalar la app primero'); return; }
+    if (!('Notification' in window)) { 
+      toast('⚠️ Primero instala la app: Compartir → Agregar a pantalla de inicio'); 
+      return; 
+    }
     const perm = await Notification.requestPermission();
     if (perm !== 'granted') { toast('⚠️ Activa las notificaciones en Ajustes del iPhone'); return; }
     S.notifEnabled = true;
