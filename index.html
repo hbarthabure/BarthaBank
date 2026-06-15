@@ -952,11 +952,39 @@ function getDefaults() {
 
 function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    // Try all known storage keys (migration support)
+    var keys = [STORAGE_KEY, 'barthabank_v1', 'bb_v2', 'miplata'];
+    var raw = null;
+    for (var ki = 0; ki < keys.length; ki++) {
+      raw = localStorage.getItem(keys[ki]);
+      if (raw) break;
+    }
+
     if (!raw) { S = getDefaults(); saveState(); return; }
-    const p = JSON.parse(raw);
+
+    var p = JSON.parse(raw);
     if (!p || typeof p !== 'object') throw new Error('Bad data');
-    const def = getDefaults();
+
+    var def = getDefaults();
+
+    // Migrate old transaction field names (description/amount/category -> desc/amt/cat)
+    var txs = Array.isArray(p.transactions) ? p.transactions : [];
+    txs = txs.map(function(t, i) {
+      return {
+        id:         t.id || (i + 1),
+        date:       t.date || '',
+        desc:       t.desc || t.description || '',
+        amt:        t.amt !== undefined ? t.amt : (t.amount !== undefined ? t.amount : 0),
+        cat:        t.cat || t.category || '📦 Otros',
+        bank:       t.bank || 'manual',
+        note:       t.note || '',
+        sharedAmt:  t.sharedAmt || 0,
+        sharedWho:  t.sharedWho || '',
+        cobrado:    !!t.cobrado,
+        totalAmt:   t.totalAmt || Math.abs(t.amt || t.amount || 0),
+      };
+    });
+
     S = {
       income:      p.income      || def.income,
       incomeJuly:  p.incomeJuly  || def.incomeJuly,
@@ -966,13 +994,17 @@ function loadState() {
       fixed:       p.fixed       || def.fixed,
       notif:       !!p.notif,
       notifTime:   p.notifTime   || def.notifTime,
-      goals: (Array.isArray(p.goals) && p.goals.length) ? p.goals : def.goals,
-      limits: Object.assign({}, DEFAULT_LIMITS, p.limits || {}),
-      transactions: (Array.isArray(p.transactions) && p.transactions.length) ? p.transactions : def.transactions,
+      goals:       (Array.isArray(p.goals) && p.goals.length) ? p.goals : def.goals,
+      limits:      Object.assign({}, DEFAULT_LIMITS, p.limits || {}),
+      transactions: txs.length ? txs : def.transactions,
     };
+
+    // Save under current key to consolidate
+    saveState();
   } catch(e) {
     S = getDefaults();
-    localStorage.removeItem(STORAGE_KEY);
+    try { localStorage.removeItem(STORAGE_KEY); } catch(e2) {}
+    saveState();
   }
 }
 
@@ -1087,6 +1119,11 @@ function renderHome() {
   el('heroGoal').textContent   = fmt(S.savingsGoal);
   el('heroBar').style.width    = pct + '%';
   el('heroBarLabel').textContent = pct + '% de meta de ahorro';
+
+  // Show debug info if no data
+  if (!S.transactions || S.transactions.length === 0) {
+    el('heroBarLabel').textContent = '⚠️ Sin datos — ve a Ajustes → Borrar todo para resetear';
+  }
 
   // Daily stats
   var todayTxs   = S.transactions.filter(function(t) { return t.date === todayStr() && t.amt < 0; });
