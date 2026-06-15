@@ -830,6 +830,39 @@ const API_URL = 'https://barthabank-api.hbarthabure.workers.dev';
 const STORAGE_KEY = 'bb_v3';
 const APP_VERSION = '4';  // Bump this to force reset on new deploys
 
+// Safe storage wrapper — handles Safari restrictions on localStorage
+var _memStore = {};
+var _storageAvailable = (function() {
+  try {
+    var t = '__bb_test__';
+    SafeStorage.setItem(t, '1');
+    SafeStorage.removeItem(t);
+    return true;
+  } catch(e) { return false; }
+})();
+var SafeStorage = {
+  getItem: function(k) {
+    if (_storageAvailable) { try { return SafeStorage.getItem(k); } catch(e) {} }
+    return _memStore[k] !== undefined ? _memStore[k] : null;
+  },
+  setItem: function(k, v) {
+    _memStore[k] = v;
+    if (_storageAvailable) { try { SafeStorage.setItem(k, v); } catch(e) {} }
+  },
+  removeItem: function(k) {
+    delete _memStore[k];
+    if (_storageAvailable) { try { SafeStorage.removeItem(k); } catch(e) {} }
+  },
+  get length() {
+    if (_storageAvailable) { try { return SafeStorage.length; } catch(e) {} }
+    return Object.keys(_memStore).length;
+  },
+  key: function(i) {
+    if (_storageAvailable) { try { return SafeStorage.key(i); } catch(e) {} }
+    return Object.keys(_memStore)[i] || null;
+  }
+};
+
 const CAT_COLORS = {
   '🛒 Supermercado':    '#5B50E8',
   '🍽️ Restaurantes':   '#EF4444',
@@ -957,20 +990,20 @@ function getDefaults() {
 
 function loadState() {
   // Force clean start if version changed
-  var savedVersion = localStorage.getItem('bb_version');
+  var savedVersion = SafeStorage.getItem('bb_version');
   if (savedVersion !== APP_VERSION) {
     // New version - wipe everything and start fresh with defaults
     ['bb_v3','barthabank_v1','bb_v2','miplata','bb_version','bb_last_alert'].forEach(function(k) {
-      try { localStorage.removeItem(k); } catch(e) {}
+      try { SafeStorage.removeItem(k); } catch(e) {}
     });
     S = getDefaults();
-    localStorage.setItem('bb_version', APP_VERSION);
+    SafeStorage.setItem('bb_version', APP_VERSION);
     saveState();
     return;
   }
 
   try {
-    var raw = localStorage.getItem(STORAGE_KEY);
+    var raw = SafeStorage.getItem(STORAGE_KEY);
     if (!raw) { S = getDefaults(); saveState(); return; }
     var p = JSON.parse(raw);
     if (!p || typeof p !== 'object') throw new Error('Bad data');
@@ -1006,7 +1039,7 @@ function loadState() {
     };
   } catch(e) {
     S = getDefaults();
-    try { localStorage.removeItem(STORAGE_KEY); } catch(e2) {}
+    try { SafeStorage.removeItem(STORAGE_KEY); } catch(e2) {}
     saveState();
   }
 }
@@ -1014,7 +1047,7 @@ function loadState() {
 
 
 function saveState() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); } catch(e) {}
+  try { SafeStorage.setItem(STORAGE_KEY, JSON.stringify(S)); } catch(e) {}
 }
 
 // ════════════════════════════════════════════════════════════
@@ -2060,7 +2093,7 @@ function exportData() {
 
 function clearAll() {
   if (!confirm('¿Borrar TODOS los datos? No se puede deshacer.')) return;
-  localStorage.removeItem(STORAGE_KEY);
+  SafeStorage.removeItem(STORAGE_KEY);
   S = getDefaults();
   saveState(); renderAll(); renderSettings();
   toast('🗑️ Datos eliminados');
@@ -2072,16 +2105,16 @@ function clearAll() {
 function forceReset() {
   // Clear ALL possible localStorage keys
   var allKeys = [];
-  for (var i = 0; i < localStorage.length; i++) {
-    allKeys.push(localStorage.key(i));
+  for (var i = 0; i < SafeStorage.length; i++) {
+    allKeys.push(SafeStorage.key(i));
   }
   allKeys.forEach(function(k) {
-    try { localStorage.removeItem(k); } catch(e) {}
+    try { SafeStorage.removeItem(k); } catch(e) {}
   });
   // Load fresh defaults
   S = getDefaults();
   saveState();
-  localStorage.setItem('bb_version', APP_VERSION);
+  SafeStorage.setItem('bb_version', APP_VERSION);
   renderAll();
   renderSettings();
   // Hide the button
@@ -2108,6 +2141,6 @@ function init() {
 }
 
 try { init(); } catch(e) { console.error('BarthaBank init error:', e); }
-</script></script>
+</script>
 </body>
 </html>
