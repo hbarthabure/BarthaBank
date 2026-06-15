@@ -824,6 +824,7 @@ input[type="file"] { display: none; }
 // ════════════════════════════════════════════════════════════
 const API_URL = 'https://barthabank-api.hbarthabure.workers.dev';
 const STORAGE_KEY = 'bb_v3';
+const APP_VERSION = '4';  // Bump this to force reset on new deploys
 
 const CAT_COLORS = {
   '🛒 Supermercado':    '#5B50E8',
@@ -951,62 +952,62 @@ function getDefaults() {
 }
 
 function loadState() {
+  // Force clean start if version changed
+  var savedVersion = localStorage.getItem('bb_version');
+  if (savedVersion !== APP_VERSION) {
+    // New version - wipe everything and start fresh with defaults
+    ['bb_v3','barthabank_v1','bb_v2','miplata','bb_version','bb_last_alert'].forEach(function(k) {
+      try { localStorage.removeItem(k); } catch(e) {}
+    });
+    S = getDefaults();
+    localStorage.setItem('bb_version', APP_VERSION);
+    saveState();
+    return;
+  }
+
   try {
-    // Try all known storage keys (migration support)
-    var keys = [STORAGE_KEY, 'barthabank_v1', 'bb_v2', 'miplata'];
-    var raw = null;
-    for (var ki = 0; ki < keys.length; ki++) {
-      raw = localStorage.getItem(keys[ki]);
-      if (raw) break;
-    }
-
+    var raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) { S = getDefaults(); saveState(); return; }
-
     var p = JSON.parse(raw);
     if (!p || typeof p !== 'object') throw new Error('Bad data');
-
     var def = getDefaults();
-
-    // Migrate old transaction field names (description/amount/category -> desc/amt/cat)
     var txs = Array.isArray(p.transactions) ? p.transactions : [];
     txs = txs.map(function(t, i) {
       return {
-        id:         t.id || (i + 1),
-        date:       t.date || '',
-        desc:       t.desc || t.description || '',
-        amt:        t.amt !== undefined ? t.amt : (t.amount !== undefined ? t.amount : 0),
-        cat:        t.cat || t.category || '📦 Otros',
-        bank:       t.bank || 'manual',
-        note:       t.note || '',
-        sharedAmt:  t.sharedAmt || 0,
-        sharedWho:  t.sharedWho || '',
-        cobrado:    !!t.cobrado,
-        totalAmt:   t.totalAmt || Math.abs(t.amt || t.amount || 0),
+        id:        t.id || (i + 1),
+        date:      t.date || '',
+        desc:      t.desc || t.description || '',
+        amt:       (t.amt !== undefined) ? t.amt : ((t.amount !== undefined) ? t.amount : 0),
+        cat:       t.cat || t.category || '📦 Otros',
+        bank:      t.bank || 'manual',
+        note:      t.note || '',
+        sharedAmt: t.sharedAmt || 0,
+        sharedWho: t.sharedWho || '',
+        cobrado:   !!t.cobrado,
+        totalAmt:  t.totalAmt || Math.abs(t.amt || t.amount || 0),
       };
     });
-
     S = {
-      income:      p.income      || def.income,
-      incomeJuly:  p.incomeJuly  || def.incomeJuly,
-      extra:       p.extra       || def.extra,
-      savingsGoal: p.savingsGoal || def.savingsGoal,
-      liquid:      p.liquid      || def.liquid,
-      fixed:       p.fixed       || def.fixed,
-      notif:       !!p.notif,
-      notifTime:   p.notifTime   || def.notifTime,
-      goals:       (Array.isArray(p.goals) && p.goals.length) ? p.goals : def.goals,
-      limits:      Object.assign({}, DEFAULT_LIMITS, p.limits || {}),
+      income:       p.income      || def.income,
+      incomeJuly:   p.incomeJuly  || def.incomeJuly,
+      extra:        p.extra       || def.extra,
+      savingsGoal:  p.savingsGoal || def.savingsGoal,
+      liquid:       p.liquid      || def.liquid,
+      fixed:        p.fixed       || def.fixed,
+      notif:        !!p.notif,
+      notifTime:    p.notifTime   || def.notifTime,
+      goals:        (Array.isArray(p.goals) && p.goals.length) ? p.goals : def.goals,
+      limits:       Object.assign({}, DEFAULT_LIMITS, p.limits || {}),
       transactions: txs.length ? txs : def.transactions,
     };
-
-    // Save under current key to consolidate
-    saveState();
   } catch(e) {
     S = getDefaults();
     try { localStorage.removeItem(STORAGE_KEY); } catch(e2) {}
     saveState();
   }
 }
+
+
 
 function saveState() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); } catch(e) {}
