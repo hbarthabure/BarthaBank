@@ -1205,7 +1205,7 @@ let _queue = [], _qIdx = 0, _editingNew = null;
 
 function openEditModal(tx) {
   _editingNew = tx;
-  document.getElementById('em-name').value = tx.desc || '';
+  document.getElementById('em-name').value = (tx && tx.desc ? tx.desc : '');
   document.getElementById('em-amt').value = Math.abs(tx.amt) || '';
   document.getElementById('em-cat').value = tx.cat || '📦 Otros';
   openModal('editModal');
@@ -2107,15 +2107,15 @@ function doConfirmEdit() {
   const name = document.getElementById('em-name').value.trim();
   const amt = parseInt(document.getElementById('em-amt').value);
   const cat = document.getElementById('em-cat').value;
-  const note = (document.getElementById('em-note')?.value || '').trim();
-  const sharedAmt = _emSharedOn ? (parseInt(document.getElementById('em-shared-amt')?.value) || 0) : 0;
-  const sharedWho = _emSharedOn ? (document.getElementById('em-shared-who')?.value || '').trim() : '';
+  const note = (document.getElementById('em-note') ? document.getElementById('em-note').value : '' || '').trim();
+  const sharedAmt = _emSharedOn ? (parseInt(document.getElementById('em-shared-amt') ? document.getElementById('em-shared-amt').value : '0') || 0) : 0;
+  const sharedWho = _emSharedOn ? (document.getElementById('em-shared-who') ? document.getElementById('em-shared-who').value : '' || '').trim() : '';
   if (!name || !amt) { toast('⚠️ Completa nombre y monto'); return; }
 
   const dup = S.transactions.find(t =>
     t.desc.toLowerCase() === name.toLowerCase() &&
     Math.abs(t.amt) === amt &&
-    t.date === (_editingNew?.date || today())
+    t.date === ((_editingNew && _editingNew.date ? _editingNew.date : today()) || today())
   );
   if (dup && !confirm('Ya existe "' + name + '" · ' + fmt(amt) + ' hoy. ¿Agregar igual?')) return;
 
@@ -2123,8 +2123,8 @@ function doConfirmEdit() {
   S.transactions.push({
     id: nextId(), desc: name, amt: -Math.abs(myAmt),
     totalAmt: amt, cat, note, sharedAmt, sharedWho,
-    cobrado: false, date: _editingNew?.date || today(),
-    bank: _editingNew?.bank || 'manual'
+    cobrado: false, date: (_editingNew && _editingNew.date ? _editingNew.date : today()) || today(),
+    bank: (_editingNew && _editingNew.bank ? _editingNew.bank : 'manual') || 'manual'
   });
   save(); renderAll();
   closeModal('editModal');
@@ -2135,7 +2135,7 @@ function doConfirmEdit() {
   if (emToggle) emToggle.className = 'toggle';
   if (emFields) emFields.style.display = 'none';
 
-  if (_editingNew?.bank === 'manual') {
+  if ((_editingNew && _editingNew.bank ? _editingNew.bank : 'manual') === 'manual') {
     const d = document.getElementById('entryDesc');
     const a = document.getElementById('entryAmt');
     if (d) d.value = '';
@@ -2156,8 +2156,8 @@ function doSaveTx() {
   const name = document.getElementById('tm-name').value.trim();
   const amt = parseInt(document.getElementById('tm-amt').value);
   const cat = document.getElementById('tm-cat').value;
-  const note = (document.getElementById('tm-note')?.value || '').trim();
-  const sharedAmt = _tmSharedOn ? (parseInt(document.getElementById('tm-shared-amt')?.value) || 0) : 0;
+  const note = (document.getElementById('tm-note') ? document.getElementById('tm-note').value : '' || '').trim();
+  const sharedAmt = _tmSharedOn ? (parseInt(document.getElementById('tm-shared-amt') ? document.getElementById('tm-shared-amt').value : '0') || 0) : 0;
   const sharedWho = _tmSharedOn ? (document.getElementById('tm-shared-who')?.value || '').trim() : '';
   if (!name || !amt) { toast('⚠️ Completa nombre y monto'); return; }
   const idx = S.transactions.findIndex(x => x.id === _editId);
