@@ -313,6 +313,14 @@ nav {
 .quota-frees { font-size: 10px; color: var(--text3); margin-top: 1px; text-align: right; font-weight: 500; }
 
 input[type="file"] { display: none; }
+.filter-btn {
+  flex-shrink: 0; padding: 6px 12px; background: var(--bg);
+  border: 1.5px solid var(--border); border-radius: 100px;
+  font-family: inherit; font-size: 13px; font-weight: 600;
+  color: var(--text2); cursor: pointer; white-space: nowrap;
+  transition: all 0.15s;
+}
+.filter-btn.active { background: var(--purple); border-color: var(--purple); color: white; }
 </style>
 </head>
 <body>
@@ -359,6 +367,38 @@ input[type="file"] { display: none; }
     </div>
     <div class="hero-bar-bg"><div class="hero-bar-fg" id="heroBar" style="width:0%"></div></div>
     <div class="hero-bar-label" id="heroBarLabel">0% de meta de ahorro</div>
+  </div>
+
+  <!-- Me deben -->
+  <div id="meDebenCard" class="card" style="display:none;margin-bottom:12px;border-left:4px solid var(--green)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:700">💸 Me deben</div>
+      <div style="font-size:18px;font-weight:800;color:var(--green);font-variant-numeric:tabular-nums" id="meDebenTotal">$0</div>
+    </div>
+    <div id="meDebenList"></div>
+  </div>
+
+  <!-- Weekly summary -->
+  <div class="card" id="weeklyCard" style="padding:14px 16px;margin-bottom:12px;display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:12px;font-weight:700;color:var(--text)">📅 Esta semana</div>
+      <div style="font-size:11px;color:var(--text3);font-weight:500" id="weekRange"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+      <div style="text-align:center;background:var(--bg);border-radius:10px;padding:10px 6px">
+        <div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Gastado</div>
+        <div style="font-size:15px;font-weight:800;color:var(--red);font-variant-numeric:tabular-nums" id="weekSpent">$0</div>
+      </div>
+      <div style="text-align:center;background:var(--bg);border-radius:10px;padding:10px 6px">
+        <div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Por día</div>
+        <div style="font-size:15px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums" id="weekDaily">$0</div>
+      </div>
+      <div style="text-align:center;background:var(--bg);border-radius:10px;padding:10px 6px">
+        <div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Mayor gasto</div>
+        <div style="font-size:12px;font-weight:700;color:var(--purple)" id="weekTop">—</div>
+      </div>
+    </div>
+    <div style="margin-top:10px;display:flex;gap:4px" id="weekBars"></div>
   </div>
 
   <div id="installBanner" class="banner" style="display:none">
@@ -445,9 +485,54 @@ input[type="file"] { display: none; }
 
 <!-- ══ HISTORIAL ══ -->
 <div class="pg" id="pg-history">
+  <div class="sec">Buscar y filtrar</div>
+  <div class="card" style="padding:12px 14px;margin-bottom:12px">
+    <div style="position:relative;margin-bottom:10px">
+      <input id="searchInput" class="inp" placeholder="🔍 Buscar gasto..." oninput="renderTxList()" style="padding-left:14px">
+    </div>
+    <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch" id="filterCats">
+      <button class="filter-btn active" onclick="setFilter('',this)">Todos</button>
+      <button class="filter-btn" onclick="setFilter('🛒 Supermercado',this)">🛒</button>
+      <button class="filter-btn" onclick="setFilter('🍽️ Restaurantes',this)">🍽️</button>
+      <button class="filter-btn" onclick="setFilter('🛵 Delivery',this)">🛵</button>
+      <button class="filter-btn" onclick="setFilter('☕ Café',this)">☕</button>
+      <button class="filter-btn" onclick="setFilter('🛣️ Autopistas',this)">🛣️</button>
+      <button class="filter-btn" onclick="setFilter('🚕 Uber/Taxi',this)">🚕</button>
+      <button class="filter-btn" onclick="setFilter('⛽ Combustible',this)">⛽</button>
+      <button class="filter-btn" onclick="setFilter('✈️ Viajes',this)">✈️</button>
+      <button class="filter-btn" onclick="setFilter('👕 Ropa',this)">👕</button>
+      <button class="filter-btn" onclick="setFilter('💈 Cuidado personal',this)">💈</button>
+      <button class="filter-btn" onclick="setFilter('🏋️ Deporte',this)">🏋️</button>
+      <button class="filter-btn" onclick="setFilter('💊 Salud',this)">💊</button>
+      <button class="filter-btn" onclick="setFilter('🏠 Servicios básicos',this)">🏠</button>
+      <button class="filter-btn" onclick="setFilter('🏠 Hogar',this)">🏡</button>
+      <button class="filter-btn" onclick="setFilter('👶 Familia',this)">👶</button>
+      <button class="filter-btn" onclick="setFilter('📚 Educación',this)">📚</button>
+      <button class="filter-btn" onclick="setFilter('💻 Tecnología',this)">💻</button>
+      <button class="filter-btn" onclick="setFilter('🎬 Entretención',this)">🎬</button>
+      <button class="filter-btn" onclick="setFilter('📱 Suscripciones',this)">📱</button>
+      <button class="filter-btn" onclick="setFilter('🍻 Salidas sociales',this)">🍻</button>
+      <button class="filter-btn" onclick="setFilter('🎁 Regalos',this)">🎁</button>
+      <button class="filter-btn" onclick="setFilter('📦 Mercado Libre',this)">📦</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <select id="filterMonth" class="inp" style="flex:1;font-size:12px;padding:8px 10px" onchange="renderTxList()">
+        <option value="">Todos los meses</option>
+      </select>
+      <select id="sortOrder" class="inp" style="flex:1;font-size:12px;padding:8px 10px" onchange="renderTxList()">
+        <option value="date-desc">Más reciente</option>
+        <option value="date-asc">Más antiguo</option>
+        <option value="amt-desc">Mayor monto</option>
+        <option value="amt-asc">Menor monto</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="searchStats" style="font-size:12px;color:var(--text3);font-weight:500;margin-bottom:8px;padding:0 2px"></div>
+
   <div class="sec">Comparativa mensual</div>
   <div class="card" id="compareBox"></div>
-  <div class="sec">Todos los gastos</div>
+  <div class="sec">Gastos</div>
   <div class="card" style="padding:4px 16px" id="txBox"></div>
 </div>
 
@@ -602,18 +687,70 @@ input[type="file"] { display: none; }
       <input id="em-name" class="inp" placeholder="Ej: Sushi con Jessi">
       <input id="em-amt" class="inp" type="number" placeholder="Monto $">
       <select id="em-cat" class="inp">
-        <option value="🛒 Supermercado">🛒 Supermercado</option>
-        <option value="🍔 Comida">🍔 Comida</option>
-        <option value="🚗 Transporte">🚗 Transporte</option>
-        <option value="🎬 Entretención">🎬 Entretención</option>
-        <option value="👕 Ropa">👕 Ropa</option>
-        <option value="💊 Salud">💊 Salud</option>
-        <option value="🏠 Servicios">🏠 Servicios</option>
-        <option value="☕ Café">☕ Café</option>
-        <option value="📦 Mercado Libre">📦 Mercado Libre</option>
-        <option value="📦 Otros">📦 Otros</option>
-      </select>
+        <optgroup label="🥗 Alimentación">
+          <optgroup label="🥗 Alimentación">
+          <optgroup label="🥗 Alimentación">
+          <optgroup label="🥗 Alimentación">
+          <optgroup label="🥗 Alimentación">
+          <optgroup label="🥗 Alimentación">
+          <option value="🛒 Supermercado">🛒 Supermercado</option>
+          <option value="🍽️ Restaurantes">🍽️ Restaurantes</option>
+          <option value="🛵 Delivery">🛵 Delivery</option>
+          <option value="☕ Café">☕ Café</option>
+        </optgroup>
+        <optgroup label="🚗 Transporte">
+          <option value="🛣️ Autopistas">🛣️ Autopistas</option>
+          <option value="🚕 Uber/Taxi">🚕 Uber/Taxi</option>
+          <option value="⛽ Combustible">⛽ Combustible</option>
+          <option value="✈️ Viajes">✈️ Viajes</option>
+        </optgroup>
+        <optgroup label="👤 Personal">
+          <option value="👕 Ropa">👕 Ropa</option>
+          <option value="💈 Cuidado personal">💈 Cuidado personal</option>
+          <option value="🏋️ Deporte">🏋️ Deporte</option>
+          <option value="💊 Salud">💊 Salud</option>
+        </optgroup>
+        <optgroup label="🏠 Hogar y familia">
+          <option value="🏠 Servicios básicos">🏠 Servicios básicos</option>
+          <option value="🏠 Hogar">🏠 Hogar</option>
+          <option value="👶 Familia">👶 Familia</option>
+          <option value="🐾 Mascotas">🐾 Mascotas</option>
+        </optgroup>
+        <optgroup label="💼 Trabajo y educación">
+          <option value="📚 Educación">📚 Educación</option>
+          <option value="💻 Tecnología">💻 Tecnología</option>
+          <option value="💼 Trabajo">💼 Trabajo</option>
+        </optgroup>
+        <optgroup label="🎉 Ocio y social">
+          <option value="🎬 Entretención">🎬 Entretención</option>
+          <option value="🎮 Gaming">🎮 Gaming</option>
+          <option value="📱 Suscripciones">📱 Suscripciones</option>
+          <option value="🎁 Regalos">🎁 Regalos</option>
+          <option value="🍻 Salidas sociales">🍻 Salidas sociales</option>
+        </optgroup>
+        <optgroup label="💰 Inversiones">
+          <option value="🏘️ Propiedades">🏘️ Propiedades</option>
+          <option value="💰 Ahorro/Inversión">💰 Ahorro/Inversión</option>
+        </optgroup>
+        <optgroup label="📦 Otros">
+          <option value="📦 Mercado Libre">📦 Mercado Libre</option>
+          <option value="📦 Otros">📦 Otros</option>
+        </optgroup>
+        </select>
       <input id="em-note" class="inp" placeholder="Nota opcional (ej: Sushi con Jessi)" style="font-size:13px">
+      <div style="background:var(--bg);border-radius:10px;padding:12px;border:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div>
+            <div style="font-size:13px;font-weight:600">💳 Pagué por otros</div>
+            <div style="font-size:11px;color:var(--text3);font-weight:500">Me van a devolver parte</div>
+          </div>
+          <button class="toggle" id="em-shared-toggle" onclick="toggleShared()" style="flex-shrink:0"></button>
+        </div>
+        <div id="em-shared-fields" style="display:none">
+          <input id="em-shared-amt" class="inp" type="number" placeholder="¿Cuánto te deben devolver? $" style="margin-bottom:8px">
+          <input id="em-shared-who" class="inp" placeholder="¿Quién? (ej: Rodrigo, Javi)" style="font-size:13px">
+        </div>
+      </div>
     </div>
     <div class="btn-row">
       <button class="btn btn-sec" onclick="closeModal('editModal')">Cancelar</button>
@@ -633,17 +770,41 @@ input[type="file"] { display: none; }
       <input id="tm-amt" class="inp" type="number" placeholder="Monto $">
       <select id="tm-cat" class="inp">
         <option value="🛒 Supermercado">🛒 Supermercado</option>
-        <option value="🍔 Comida">🍔 Comida</option>
-        <option value="🚗 Transporte">🚗 Transporte</option>
+        <option value="🍽️ Restaurantes">🍽️ Restaurantes</option>
+        <option value="🛵 Delivery">🛵 Delivery</option>
+        <option value="🛣️ Autopistas">🛣️ Autopistas</option>
+        <option value="🚕 Uber/Taxi">🚕 Uber/Taxi</option>
+        <option value="⛽ Combustible">⛽ Combustible</option>
         <option value="🎬 Entretención">🎬 Entretención</option>
         <option value="👕 Ropa">👕 Ropa</option>
+        <option value="🏋️ Deporte">🏋️ Deporte</option>
         <option value="💊 Salud">💊 Salud</option>
+        <option value="💈 Cuidado personal">💈 Cuidado personal</option>
         <option value="🏠 Servicios">🏠 Servicios</option>
-        <option value="☕ Café">☕ Café</option>
+        <option value="🏠 Hogar">🏠 Hogar</option>
+        <option value="👶 Familia">👶 Familia</option>
+        <option value="✈️ Viajes">✈️ Viajes</option>
+        <option value="🎁 Regalos">🎁 Regalos</option>
         <option value="📦 Mercado Libre">📦 Mercado Libre</option>
         <option value="📦 Otros">📦 Otros</option>
       </select>
       <input id="tm-note" class="inp" placeholder="Nota (ej: cena cumpleaños Ignacio)" style="font-size:13px">
+      <div style="background:var(--bg);border-radius:10px;padding:12px;border:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div>
+            <div style="font-size:13px;font-weight:600">💳 Pagué por otros</div>
+            <div style="font-size:11px;color:var(--text3);font-weight:500">Me van a devolver parte</div>
+          </div>
+          <button class="toggle" id="tm-shared-toggle" onclick="toggleTxShared()" style="flex-shrink:0"></button>
+        </div>
+        <div id="tm-shared-fields" style="display:none">
+          <input id="tm-shared-amt" class="inp" type="number" placeholder="¿Cuánto te deben devolver? $" style="margin-bottom:8px">
+          <input id="tm-shared-who" class="inp" placeholder="¿Quién? (ej: Rodrigo, Javi)" style="font-size:13px">
+          <div id="tm-cobrado-section" style="display:none;margin-top:8px">
+            <button onclick="marcarCobrado()" class="btn btn-sm" style="background:var(--green-light);color:var(--green);border:1px solid rgba(0,184,124,0.3)">✅ Marcar como cobrado</button>
+          </div>
+        </div>
+      </div>
     </div>
     <button class="btn btn-red" style="margin-bottom:8px" onclick="deleteTx()">🗑️ Eliminar gasto</button>
     <div class="btn-row">
@@ -662,14 +823,41 @@ input[type="file"] { display: none; }
 const API_URL = 'https://barthabank-api.hbarthabure.workers.dev';
 
 const CAT_COLORS = {
+  // Alimentación
   '🛒 Supermercado': '#5B50E8',
-  '🍔 Comida': '#EF4444',
-  '🚗 Transporte': '#F59E0B',
-  '🎬 Entretención': '#10B981',
+  '🍽️ Restaurantes': '#EF4444',
+  '🛵 Delivery': '#F97316',
+  '☕ Café': '#92400E',
+  // Transporte
+  '🛣️ Autopistas': '#F59E0B',
+  '🚕 Uber/Taxi': '#FBBF24',
+  '⛽ Combustible': '#D97706',
+  '✈️ Viajes': '#0EA5E9',
+  // Persona
   '👕 Ropa': '#EC4899',
+  '💈 Cuidado personal': '#A855F7',
+  '🏋️ Deporte': '#06B6D4',
   '💊 Salud': '#3B82F6',
-  '🏠 Servicios': '#8B5CF6',
-  '☕ Café': '#F97316',
+  // Hogar y familia
+  '🏠 Servicios básicos': '#8B5CF6',
+  '🏠 Hogar': '#7C3AED',
+  '👶 Familia': '#F472B6',
+  '🐾 Mascotas': '#84CC16',
+  // Finanzas y trabajo
+  '📚 Educación': '#10B981',
+  '💻 Tecnología': '#6366F1',
+  '💼 Trabajo': '#64748B',
+  // Ocio
+  '🎬 Entretención': '#14B8A6',
+  '🎮 Gaming': '#8B5CF6',
+  '📱 Suscripciones': '#6C63FF',
+  // Social
+  '🎁 Regalos': '#E879F9',
+  '🍻 Salidas sociales': '#FB7185',
+  // Inversiones
+  '🏘️ Propiedades': '#059669',
+  '💰 Ahorro/Inversión': '#047857',
+  // Otros
   '📦 Mercado Libre': '#14B8A6',
   '📦 Otros': '#6B7280',
 };
@@ -713,48 +901,75 @@ const DEFAULTS = {
     { id: 1, emoji: '💰', name: 'Fondo de ahorro', target: 10000000, saved: 1500000 }
   ],
   limits: {
+    // Alimentación
     '🛒 Supermercado': 380000,
-    '🍔 Comida': 500000,
-    '🚗 Transporte': 130000,
-    '🎬 Entretención': 120000,
-    '👕 Ropa': 350000,
-    '💊 Salud': 120000,
-    '🏠 Servicios': 420000,
-    '☕ Café': 40000,
+    '🍽️ Restaurantes': 300000,
+    '🛵 Delivery': 80000,
+    '☕ Café': 30000,
+    // Transporte
+    '🛣️ Autopistas': 60000,
+    '🚕 Uber/Taxi': 80000,
+    '⛽ Combustible': 100000,
+    '✈️ Viajes': 500000,
+    // Persona
+    '👕 Ropa': 300000,
+    '💈 Cuidado personal': 60000,
+    '🏋️ Deporte': 150000,
+    '💊 Salud': 80000,
+    // Hogar y familia
+    '🏠 Servicios básicos': 350000,
+    '🏠 Hogar': 200000,
+    '👶 Familia': 150000,
+    '🐾 Mascotas': 50000,
+    // Finanzas y trabajo
+    '📚 Educación': 100000,
+    '💻 Tecnología': 80000,
+    '💼 Trabajo': 50000,
+    // Ocio
+    '🎬 Entretención': 100000,
+    '🎮 Gaming': 30000,
+    '📱 Suscripciones': 50000,
+    // Social
+    '🎁 Regalos': 100000,
+    '🍻 Salidas sociales': 150000,
+    // Inversiones
+    '🏘️ Propiedades': 0,
+    '💰 Ahorro/Inversión': 0,
+    // Otros
     '📦 Mercado Libre': 300000,
-    '📦 Otros': 150000,
-  },
+    '📦 Otros': 100000,
+  },  },
   transactions: [
-    { id: 1, date: '2026-06-04', desc: 'Uber', amt: -13899, cat: '🚗 Transporte', bank: 'santander' },
+    { id: 1, date: '2026-06-04', desc: 'Uber', amt: -13899, cat: '🚕 Uber/Taxi', bank: 'santander' },
     { id: 2, date: '2026-06-04', desc: 'Bb Sports', amt: -8000, cat: '💊 Salud', bank: 'cmr' },
-    { id: 3, date: '2026-06-04', desc: 'Simple Park', amt: -1700, cat: '🚗 Transporte', bank: 'cmr' },
-    { id: 4, date: '2026-06-04', desc: 'Uber', amt: -19614, cat: '🚗 Transporte', bank: 'cmr' },
-    { id: 5, date: '2026-06-05', desc: 'Toku Seguros', amt: -92803, cat: '🏠 Servicios', bank: 'cmr' },
+    { id: 3, date: '2026-06-04', desc: 'Simple Park', amt: -1700, cat: '🚕 Uber/Taxi', bank: 'cmr' },
+    { id: 4, date: '2026-06-04', desc: 'Uber', amt: -19614, cat: '🚕 Uber/Taxi', bank: 'cmr' },
+    { id: 5, date: '2026-06-05', desc: 'Toku Seguros', amt: -92803, cat: '🏠 Servicios básicos', bank: 'cmr' },
     { id: 6, date: '2026-06-05', desc: 'Mercado Libre', amt: -6110, cat: '📦 Mercado Libre', bank: 'cmr' },
     { id: 7, date: '2026-06-05', desc: 'Mercado Libre', amt: -14400, cat: '📦 Mercado Libre', bank: 'cmr' },
     { id: 8, date: '2026-06-05', desc: 'Mercado Libre', amt: -2300, cat: '📦 Mercado Libre', bank: 'cmr' },
     { id: 9, date: '2026-06-05', desc: 'Mercado Libre', amt: -28771, cat: '📦 Mercado Libre', bank: 'cmr' },
     { id: 10, date: '2026-06-06', desc: 'Cinepolis', amt: -17000, cat: '🎬 Entretención', bank: 'cmr' },
     { id: 11, date: '2026-06-06', desc: 'Doc Popcorn', amt: -16200, cat: '🎬 Entretención', bank: 'cmr' },
-    { id: 12, date: '2026-06-06', desc: 'Estacionamiento Saba', amt: -7300, cat: '🚗 Transporte', bank: 'cmr' },
+    { id: 12, date: '2026-06-06', desc: 'Estacionamiento Saba', amt: -7300, cat: '🛣️ Autopistas', bank: 'cmr' },
     { id: 13, date: '2026-06-07', desc: 'Mercado Libre', amt: -38330, cat: '📦 Mercado Libre', bank: 'cmr' },
-    { id: 14, date: '2026-06-08', desc: 'Sushi con Jessi', amt: -10000, cat: '🍔 Comida', bank: 'cmr' },
+    { id: 14, date: '2026-06-08', desc: 'Sushi con Jessi', amt: -10000, cat: '🍽️ Restaurantes', bank: 'cmr' },
     { id: 15, date: '2026-06-08', desc: 'Mercado Libre', amt: -3968, cat: '📦 Mercado Libre', bank: 'cmr' },
     { id: 16, date: '2026-06-08', desc: 'Municipalidad Las Condes', amt: -39331, cat: '📦 Otros', bank: 'cmr' },
-    { id: 17, date: '2026-06-09', desc: 'Vespucio Sur', amt: -17142, cat: '🚗 Transporte', bank: 'cmr' },
-    { id: 18, date: '2026-06-09', desc: 'All Nutrition', amt: -93638, cat: '💊 Salud', bank: 'cmr' },
-    { id: 19, date: '2026-06-10', desc: 'MixGreen', amt: -67960, cat: '🍔 Comida', bank: 'cmr' },
+    { id: 17, date: '2026-06-09', desc: 'Vespucio Sur', amt: -17142, cat: '🛣️ Autopistas', bank: 'cmr' },
+    { id: 18, date: '2026-06-09', desc: 'All Nutrition', amt: -93638, cat: '🏋️ Deporte', bank: 'cmr' },
+    { id: 19, date: '2026-06-10', desc: 'MixGreen', amt: -67960, cat: '🍽️ Restaurantes', bank: 'cmr' },
     { id: 20, date: '2026-06-10', desc: 'Apple', amt: -19990, cat: '🎬 Entretención', bank: 'cmr' },
-    { id: 21, date: '2026-06-10', desc: 'Crepes Y Waffles', amt: -75919, cat: '🍔 Comida', bank: 'santander' },
-    { id: 22, date: '2026-06-11', desc: 'Parksur', amt: -5000, cat: '🚗 Transporte', bank: 'cmr' },
+    { id: 21, date: '2026-06-10', desc: 'Crepes Y Waffles', amt: -75919, cat: '🍽️ Restaurantes', bank: 'santander' },
+    { id: 22, date: '2026-06-11', desc: 'Parksur', amt: -5000, cat: '🛣️ Autopistas', bank: 'cmr' },
     { id: 23, date: '2026-06-11', desc: 'Mercado Libre', amt: -14990, cat: '📦 Mercado Libre', bank: 'cmr' },
     { id: 24, date: '2026-06-11', desc: 'Mercado Libre', amt: -66623, cat: '📦 Mercado Libre', bank: 'cmr' },
-    { id: 25, date: '2026-06-11', desc: 'Anthropic', amt: -5489, cat: '🏠 Servicios', bank: 'cmr' },
-    { id: 26, date: '2026-06-11', desc: 'VTR', amt: -20913, cat: '🏠 Servicios', bank: 'cmr' },
-    { id: 27, date: '2026-06-11', desc: 'Autopista Central', amt: -3922, cat: '🚗 Transporte', bank: 'cmr' },
+    { id: 25, date: '2026-06-11', desc: 'Anthropic', amt: -5489, cat: '🏠 Servicios básicos', bank: 'cmr' },
+    { id: 26, date: '2026-06-11', desc: 'VTR', amt: -20913, cat: '🏠 Servicios básicos', bank: 'cmr' },
+    { id: 27, date: '2026-06-11', desc: 'Autopista Central', amt: -3922, cat: '🛣️ Autopistas', bank: 'cmr' },
     { id: 28, date: '2026-06-13', desc: 'Falabella', amt: -55990, cat: '👕 Ropa', bank: 'cmr' },
-    { id: 29, date: '2026-06-13', desc: 'Tanta', amt: -136750, cat: '🍔 Comida', bank: 'cmr' },
-    { id: 30, date: '2026-06-13', desc: 'Copec', amt: -49002, cat: '🚗 Transporte', bank: 'cmr' },
+    { id: 29, date: '2026-06-13', desc: 'Tanta', amt: -136750, cat: '🍽️ Restaurantes', bank: 'cmr' },
+    { id: 30, date: '2026-06-13', desc: 'Copec', amt: -49002, cat: '⛽ Combustible', bank: 'cmr' },
     { id: 31, date: '2026-06-13', desc: 'Farmacias Cruz Verde', amt: -18876, cat: '💊 Salud', bank: 'cmr' },
     { id: 32, date: '2026-06-13', desc: 'H&M', amt: -19160, cat: '👕 Ropa', bank: 'cmr' },
   ]
@@ -852,6 +1067,8 @@ function renderHome() {
   renderAlerts(spent, budget, txs, isJuly);
   renderCats(txs);
   updateDailyStats();
+  renderWeeklySummary();
+  renderMeDeben();
   checkMonthEndAlert();
 }
 
@@ -1056,7 +1273,7 @@ async function handleScan(event) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6', max_tokens: 1000,
-        system: 'Extrae movimientos de imágenes de apps bancarias chilenas. Responde SOLO con JSON válido sin markdown:\n{"transactions":[{"desc":"nombre comercio","amt":12345,"cat":"categoría"}]}\nCategorías válidas: 🛒 Supermercado, 🍔 Comida, 🚗 Transporte, 🎬 Entretención, 👕 Ropa, 💊 Salud, 🏠 Servicios, ☕ Café, 📦 Mercado Libre, 📦 Otros. Montos positivos. Si no hay datos claros: {"transactions":[]}',
+        system: 'Extrae movimientos de imágenes de apps bancarias chilenas. Responde SOLO con JSON válido sin markdown:\n{"transactions":[{"desc":"nombre comercio","amt":12345,"cat":"categoría"}]}\nCategorías válidas (usa la más específica): 🛒 Supermercado, 🍽️ Restaurantes (restaurante/almuerzo/cena/food), 🛵 Delivery (Rappi/UberEats/PedidosYa), ☕ Café (café/coffee/starbucks), 🛣️ Autopistas (Costanera/Vespucio/AutoNorte/peaje/estacionamiento), 🚕 Uber/Taxi (Uber/Cabify/taxi), ⛽ Combustible (Copec/Shell/Enex/bencina), ✈️ Viajes (hotel/vuelo/airbnb/hospedaje), 👕 Ropa (tienda ropa/calzado/moda), 💈 Cuidado personal (peluquería/spa/barbería), 🏋️ Deporte (gym/suplementos/nutrición/deporte), 💊 Salud (farmacia/médico/clínica/laboratorio), 🏠 Servicios básicos (luz/agua/gas/internet/telefonía/seguro), 🏠 Hogar (muebles/decoración/ferretería/Ikea), 👶 Familia (colegio/niños/juguetes), 🐾 Mascotas, 📚 Educación (curso/libro/capacitación/universidad), 💻 Tecnología (Apple/computador/software/electrónico), 📱 Suscripciones (Netflix/Spotify/Disney/streaming), 🎬 Entretención (cine/teatro/evento/show), 🎮 Gaming, 🍻 Salidas sociales (bar/club/reunión social), 🎁 Regalos, 🏘️ Propiedades (arriendo/dividendo/gastos comunes), 💰 Ahorro/Inversión, 📦 Mercado Libre (Mercado Libre/ML/MercadoPago), 📦 Otros. Montos positivos. Si no hay datos claros: {"transactions":[]}',
         messages: [{ role: 'user', content: [
           { type: 'image', source: { type: 'base64', media_type: file.type || 'image/jpeg', data: b64 } },
           { type: 'text', text: 'Extrae todos los gastos de esta imagen bancaria.' }
@@ -1206,24 +1423,75 @@ async function runAnalysis() {
 // ════════════════════════════════════════
 // HISTORY
 // ════════════════════════════════════════
+let _activeFilter = '';
+
+function setFilter(cat, btn) {
+  _activeFilter = cat;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTxList();
+}
+
 function renderHistory() {
+  // Populate month filter
+  const monthSel = document.getElementById('filterMonth');
+  if (monthSel) {
+    const months = [...new Set(S.transactions.map(t => t.date ? t.date.substring(0,7) : '').filter(Boolean))].sort().reverse();
+    monthSel.innerHTML = '<option value="">Todos los meses</option>' +
+      months.map(m => {
+        const d = new Date(m + '-01');
+        const label = d.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
+        return `<option value="${m}">${label}</option>`;
+      }).join('');
+  }
   renderCompare();
   renderTxList();
 }
 
 function renderTxList() {
-  const sorted = [...S.transactions].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  const search = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
+  const monthFilter = document.getElementById('filterMonth')?.value || '';
+  const sort = document.getElementById('sortOrder')?.value || 'date-desc';
   const box = document.getElementById('txBox');
-  if (!sorted.length) {
-    box.innerHTML = '<div class="empty"><div class="empty-icon">💸</div><div class="empty-text">Sin movimientos. Escanea o agrega un gasto.</div></div>';
+
+  let txs = [...S.transactions];
+
+  // Apply filters
+  if (_activeFilter) txs = txs.filter(t => t.cat === _activeFilter);
+  if (monthFilter) txs = txs.filter(t => t.date && t.date.startsWith(monthFilter));
+  if (search) txs = txs.filter(t =>
+    (t.desc || '').toLowerCase().includes(search) ||
+    (t.note || '').toLowerCase().includes(search) ||
+    (t.cat || '').toLowerCase().includes(search)
+  );
+
+  // Sort
+  txs.sort((a, b) => {
+    if (sort === 'date-desc') return (b.date||'').localeCompare(a.date||'');
+    if (sort === 'date-asc') return (a.date||'').localeCompare(b.date||'');
+    if (sort === 'amt-desc') return Math.abs(b.amt) - Math.abs(a.amt);
+    if (sort === 'amt-asc') return Math.abs(a.amt) - Math.abs(b.amt);
+    return 0;
+  });
+
+  // Stats
+  const statsEl = document.getElementById('searchStats');
+  if (statsEl) {
+    const total = txs.filter(t => t.amt < 0).reduce((a,t) => a + Math.abs(t.amt), 0);
+    statsEl.textContent = txs.length + ' movimientos' + (total > 0 ? ' · ' + fmt(total) + ' total' : '');
+  }
+
+  if (!txs.length) {
+    box.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">Sin resultados para esta búsqueda</div></div>';
     return;
   }
-  box.innerHTML = sorted.slice(0, 100).map(t => `
+
+  box.innerHTML = txs.slice(0, 150).map(t => `
     <div class="tx" onclick="openTxModal(${t.id})">
       <div class="tx-icon">${t.cat ? t.cat.split(' ')[0] : '💳'}</div>
       <div class="tx-info">
-        <div class="tx-desc">${t.desc}</div>
-        <div class="tx-meta">${t.cat || '—'} · ${t.date || ''}${t.note ? ' · <em>' + t.note + '</em>' : ''}</div>
+        <div class="tx-desc">${t.desc}${t.sharedAmt > 0 ? '<span style="margin-left:6px;font-size:10px;color:var(--green);font-weight:700">' + (t.cobrado ? '✅' : '💸+' + fmt(t.sharedAmt)) + '</span>' : ''}</div>
+        <div class="tx-meta">${t.cat || '—'} · ${t.date || ''}${t.note ? ' · <em style="color:var(--purple)">' + t.note + '</em>' : ''}</div>
       </div>
       <div class="tx-right">
         <div class="tx-amt${t.amt > 0 ? ' inc' : ''}">${t.amt > 0 ? '+' : ''}${fmt(t.amt)}</div>
@@ -1598,6 +1866,70 @@ function init() {
 }
 
 // ════════════════════════════════════════
+// WEEKLY SUMMARY
+// ════════════════════════════════════════
+function renderWeeklySummary() {
+  const card = document.getElementById('weeklyCard');
+  if (!card) return;
+
+  const now = new Date();
+  // Get start of week (Monday)
+  const dayOfWeek = (now.getDay() + 6) % 7; // 0=Mon, 6=Sun
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - dayOfWeek);
+  weekStart.setHours(0,0,0,0);
+
+  // Get transactions this week
+  const weekTxs = S.transactions.filter(t => {
+    if (!t.date || t.amt >= 0) return false;
+    const d = new Date(t.date);
+    return d >= weekStart && d <= now;
+  });
+
+  if (!weekTxs.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  const weekSpent = weekTxs.reduce((a,t) => a + Math.abs(t.amt), 0);
+  const daysElapsed = Math.max(1, dayOfWeek + 1);
+  const dailyAvg = Math.round(weekSpent / daysElapsed);
+
+  // Top category
+  const byCat = {};
+  weekTxs.forEach(t => byCat[t.cat] = (byCat[t.cat]||0) + Math.abs(t.amt));
+  const topCat = Object.entries(byCat).sort((a,b)=>b[1]-a[1])[0];
+
+  // Week range label
+  const endLabel = now.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+  const startLabel = weekStart.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+
+  document.getElementById('weekRange').textContent = startLabel + ' – ' + endLabel;
+  document.getElementById('weekSpent').textContent = fmt(weekSpent);
+  document.getElementById('weekDaily').textContent = fmt(dailyAvg);
+  document.getElementById('weekTop').textContent = topCat ? topCat[0].split(' ')[0] + ' ' + fmt(topCat[1]) : '—';
+
+  // Day bars (Mon-Sun)
+  const days = ['L','M','X','J','V','S','D'];
+  const dayTotals = Array(7).fill(0);
+  weekTxs.forEach(t => {
+    const d = new Date(t.date);
+    const dow = (d.getDay() + 6) % 7;
+    dayTotals[dow] += Math.abs(t.amt);
+  });
+  const maxDay = Math.max(...dayTotals, 1);
+  document.getElementById('weekBars').innerHTML = days.map((d, i) => {
+    const h = Math.round((dayTotals[i] / maxDay) * 40);
+    const isToday = i === dayOfWeek;
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+      <div style="font-size:9px;font-weight:600;color:${isToday?'var(--purple)':'var(--text3)'}">${fmt(dayTotals[i]).replace('$','$')}</div>
+      <div style="width:100%;height:40px;display:flex;align-items:flex-end">
+        <div style="width:100%;height:${h||2}px;border-radius:3px;background:${isToday?'var(--purple)':'var(--border)'};min-height:2px"></div>
+      </div>
+      <div style="font-size:10px;font-weight:${isToday?'700':'500'};color:${isToday?'var(--purple)':'var(--text3)'}">${d}</div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════
 // DAILY SPENDING
 // ════════════════════════════════════════
 function updateDailyStats() {
@@ -1841,6 +2173,190 @@ function renderRecurring() {
       </div>
     </div>`).join('');
 }
+
+// ════════════════════════════════════════
+// SHARED PAYMENTS / ME DEBEN
+// ════════════════════════════════════════
+let _emSharedOn = false;
+let _tmSharedOn = false;
+
+function toggleShared() {
+  _emSharedOn = !_emSharedOn;
+  const toggle = document.getElementById('em-shared-toggle');
+  const fields = document.getElementById('em-shared-fields');
+  if (toggle) toggle.className = 'toggle' + (_emSharedOn ? ' on' : '');
+  if (fields) fields.style.display = _emSharedOn ? 'block' : 'none';
+}
+
+function toggleTxShared() {
+  _tmSharedOn = !_tmSharedOn;
+  const toggle = document.getElementById('tm-shared-toggle');
+  const fields = document.getElementById('tm-shared-fields');
+  if (toggle) toggle.className = 'toggle' + (_tmSharedOn ? ' on' : '');
+  if (fields) fields.style.display = _tmSharedOn ? 'block' : 'none';
+}
+
+function renderMeDeben() {
+  const card = document.getElementById('meDebenCard');
+  const listEl = document.getElementById('meDebenList');
+  const totalEl = document.getElementById('meDebenTotal');
+  if (!card) return;
+
+  const pendientes = S.transactions.filter(t => t.sharedAmt > 0 && !t.cobrado);
+  
+  if (!pendientes.length) {
+    card.style.display = 'none';
+    return;
+  }
+
+  card.style.display = 'block';
+  const total = pendientes.reduce((a, t) => a + (t.sharedAmt || 0), 0);
+  if (totalEl) totalEl.textContent = fmt(total);
+
+  if (listEl) {
+    listEl.innerHTML = pendientes.map(t => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--border)">
+        <div>
+          <div style="font-size:12px;font-weight:600">${t.desc}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:1px;font-weight:500">${t.sharedWho || 'Pendiente'} · ${t.date || ''}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="font-size:13px;font-weight:700;color:var(--green);font-variant-numeric:tabular-nums">+${fmt(t.sharedAmt)}</div>
+          <button onclick="cobrarTx(${t.id})" style="font-size:10px;font-weight:700;padding:4px 8px;background:var(--green-light);color:var(--green);border:1px solid rgba(0,184,124,0.3);border-radius:6px;cursor:pointer;font-family:inherit">Cobrado ✓</button>
+        </div>
+      </div>`).join('');
+  }
+}
+
+function cobrarTx(id) {
+  const idx = S.transactions.findIndex(t => t.id === id);
+  if (idx < 0) return;
+  S.transactions[idx].cobrado = true;
+  save(); renderAll();
+  toast('✅ Marcado como cobrado');
+}
+
+function marcarCobrado() {
+  if (_editId) cobrarTx(_editId);
+  closeModal('txModal');
+}
+
+// Override confirmEdit to save shared payment data
+const _baseConfirmEdit = window.confirmEdit;
+window.confirmEdit = function() {
+  const name = document.getElementById('em-name').value.trim();
+  const amt = parseInt(document.getElementById('em-amt').value);
+  const cat = document.getElementById('em-cat').value;
+  const note = document.getElementById('em-note').value.trim();
+  const sharedAmt = _emSharedOn ? (parseInt(document.getElementById('em-shared-amt').value) || 0) : 0;
+  const sharedWho = _emSharedOn ? (document.getElementById('em-shared-who').value.trim()) : '';
+  if (!name || !amt) { toast('⚠️ Completa nombre y monto'); return; }
+
+  const dup = S.transactions.find(t =>
+    t.desc.toLowerCase() === name.toLowerCase() &&
+    Math.abs(t.amt) === amt &&
+    t.date === (_editingNew.date || today())
+  );
+  if (dup && !confirm('Ya existe "' + name + '" · ' + fmt(amt) + ' hoy. ¿Agregar igual?')) return;
+
+  // Real cost to Hernán = total - what others owe him
+  const myAmt = sharedAmt > 0 ? amt - sharedAmt : amt;
+
+  S.transactions.push({
+    id: nextId(),
+    desc: name,
+    amt: -Math.abs(myAmt),
+    totalAmt: amt,
+    cat, note,
+    sharedAmt: sharedAmt,
+    sharedWho: sharedWho,
+    cobrado: false,
+    date: _editingNew.date || today(),
+    bank: _editingNew.bank || 'manual'
+  });
+  save(); renderAll();
+  closeModal('editModal');
+
+  // Reset shared toggle
+  _emSharedOn = false;
+  const toggle = document.getElementById('em-shared-toggle');
+  const fields = document.getElementById('em-shared-fields');
+  if (toggle) toggle.className = 'toggle';
+  if (fields) fields.style.display = 'none';
+
+  if (_editingNew.bank === 'manual') {
+    document.getElementById('entryDesc').value = '';
+    document.getElementById('entryAmt').value = '';
+  }
+
+  _qIdx++;
+  if (_qIdx < _queue.length) {
+    setTimeout(() => openEditModal(_queue[_qIdx]), 300);
+    toast('✅ Guardado · ' + (_queue.length - _qIdx) + ' más');
+  } else {
+    _queue = []; _qIdx = 0; _editingNew = null;
+    toast('✅ Guardado' + (sharedAmt > 0 ? ' · Te deben ' + fmt(sharedAmt) : ''));
+  }
+};
+
+// Override saveTx to save shared data
+const _baseSaveTx = window.saveTx;
+window.saveTx = function() {
+  const name = document.getElementById('tm-name').value.trim();
+  const amt = parseInt(document.getElementById('tm-amt').value);
+  const cat = document.getElementById('tm-cat').value;
+  const note = document.getElementById('tm-note').value.trim();
+  const sharedAmt = _tmSharedOn ? (parseInt(document.getElementById('tm-shared-amt').value) || 0) : 0;
+  const sharedWho = _tmSharedOn ? (document.getElementById('tm-shared-who').value.trim()) : '';
+  if (!name || !amt) { toast('⚠️ Completa nombre y monto'); return; }
+  const idx = S.transactions.findIndex(x => x.id === _editId);
+  if (idx < 0) return;
+  const myAmt = sharedAmt > 0 ? amt - sharedAmt : amt;
+  S.transactions[idx] = {
+    ...S.transactions[idx],
+    desc: name, amt: -Math.abs(myAmt),
+    totalAmt: amt, cat, note,
+    sharedAmt, sharedWho,
+  };
+  save(); renderAll(); closeModal('txModal');
+  toast('✅ Actualizado' + (sharedAmt > 0 ? ' · Te deben ' + fmt(sharedAmt) : ''));
+
+  _tmSharedOn = false;
+  const toggle = document.getElementById('tm-shared-toggle');
+  const fields = document.getElementById('tm-shared-fields');
+  if (toggle) toggle.className = 'toggle';
+  if (fields) fields.style.display = 'none';
+};
+
+// Override openTxModal to show shared data
+const _baseOpenTxModal = window.openTxModal;
+window.openTxModal = function(id) {
+  const t = S.transactions.find(x => x.id === id);
+  if (!t) return;
+  _editId = id;
+  document.getElementById('tm-name').value = t.desc || '';
+  document.getElementById('tm-amt').value = Math.abs(t.totalAmt || t.amt) || '';
+  document.getElementById('tm-cat').value = t.cat || '📦 Otros';
+  document.getElementById('tm-note').value = t.note || '';
+
+  // Restore shared state
+  _tmSharedOn = !!(t.sharedAmt > 0);
+  const toggle = document.getElementById('tm-shared-toggle');
+  const fields = document.getElementById('tm-shared-fields');
+  const cobradoSection = document.getElementById('tm-cobrado-section');
+  if (toggle) toggle.className = 'toggle' + (_tmSharedOn ? ' on' : '');
+  if (fields) {
+    fields.style.display = _tmSharedOn ? 'block' : 'none';
+    if (_tmSharedOn) {
+      document.getElementById('tm-shared-amt').value = t.sharedAmt || '';
+      document.getElementById('tm-shared-who').value = t.sharedWho || '';
+    }
+  }
+  if (cobradoSection) cobradoSection.style.display = (t.sharedAmt > 0 && !t.cobrado) ? 'block' : 'none';
+
+  closeModal('catModal');
+  setTimeout(() => openModal('txModal'), 200);
+};
 
 try { init(); } catch(e) { console.error('Init error:', e); }
 </script>
