@@ -407,6 +407,10 @@ input[type="file"] { display: none; }
     <button class="banner-close" onclick="this.parentElement.style.display='none'">×</button>
   </div>
 
+  <div id="emergencyReset" style="background:#EF4444;border-radius:12px;padding:14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+    <div style="color:white;font-size:13px;font-weight:600">Sin datos cargados</div>
+    <button onclick="forceReset()" style="background:white;color:#EF4444;border:none;border-radius:8px;padding:8px 16px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">Resetear ▶</button>
+  </div>
   <div class="sec">Alertas</div>
   <div id="alertsBox"></div>
 
@@ -1115,6 +1119,9 @@ function renderHome() {
 
   el('heroSpent').textContent = fmt(spent);
   el('heroSub').textContent   = txs.length + ' movimientos · ' + month + (isJuly ? ' 🚀' : '');
+  // Show/hide emergency reset
+  var emerBtn = document.getElementById('emergencyReset');
+  if (emerBtn) emerBtn.style.display = (S.transactions.length === 0) ? 'flex' : 'none';
   el('heroLiquid').textContent = fmt(liquid);
   el('heroEnd').textContent    = fmt(Math.max(0, endAmt));
   el('heroGoal').textContent   = fmt(S.savingsGoal);
@@ -2062,6 +2069,27 @@ function clearAll() {
 // ════════════════════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════════════════════
+function forceReset() {
+  // Clear ALL possible localStorage keys
+  var allKeys = [];
+  for (var i = 0; i < localStorage.length; i++) {
+    allKeys.push(localStorage.key(i));
+  }
+  allKeys.forEach(function(k) {
+    try { localStorage.removeItem(k); } catch(e) {}
+  });
+  // Load fresh defaults
+  S = getDefaults();
+  saveState();
+  localStorage.setItem('bb_version', APP_VERSION);
+  renderAll();
+  renderSettings();
+  // Hide the button
+  var btn = document.getElementById('emergencyReset');
+  if (btn) btn.style.display = 'none';
+  toast('✅ Datos reseteados correctamente');
+}
+
 function init() {
   loadState();
 
