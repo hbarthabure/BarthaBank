@@ -1225,7 +1225,7 @@ function renderCats(txs) {
     var badge  = pct >= 100 ? '<span class="cat-badge">límite</span>' : '';
     var emoji  = cat.split(' ')[0];
     var name   = cat.split(' ').slice(1).join(' ');
-    return '<div class="cat-item ' + status + '" onclick="openCatModal('' + cat.replace(/'/g, "\'") + '')">' +
+    return '<div class="cat-item ' + status + '" onclick="openCatModal(&apos;' + cat.replace(/'/g, '') + '&apos;)">' +
       '<div class="cat-row">' +
         '<div class="cat-name"><span class="cat-emoji">' + emoji + '</span>' + name + ' ' + badge + '</div>' +
         '<div class="cat-amounts"><div class="cat-spent">' + fmt(s) + '</div><div class="cat-limit">de ' + fmt(lim) + ' · ver ›</div></div>' +
@@ -1688,21 +1688,14 @@ function runAnalysis() {
   var spent  = totalSpent(txs);
   var income = totalIncome();
   var summary = ALL_CATS.filter(function(c) { return byCat[c] > 0; })
-    .map(function(c) { return c + ': ' + fmt(byCat[c]) + ' (límite ' + fmt(S.limits[c]||0) + ')'; }).join('
-');
+    .map(function(c) { return c + ': ' + fmt(byCat[c]) + ' (límite ' + fmt(S.limits[c]||0) + ')'; }).join('\n');
 
   fetch(API_URL, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'claude-sonnet-4-6', max_tokens: 800,
       system: 'Eres asesor financiero personal para usuarios chilenos. Máximo 4 oraciones directas. Sin asteriscos. Usa <strong> para énfasis.',
-      messages: [{ role:'user', content: 'Sueldo: ' + fmt(income) + '
-Meta ahorro: ' + fmt(S.savingsGoal) + '
-Gastado: ' + fmt(spent) + '
-
-' + summary + '
-
-Análisis directo y qué recortar.' }]
+      messages: [{ role:'user', content: 'Sueldo: ' + fmt(income) + '\nMeta ahorro: ' + fmt(S.savingsGoal) + '\nGastado: ' + fmt(spent) + '\n' + summary + '\nAnálisis directo y qué recortar.' }]
     })
   })
   .then(function(r) { return r.json(); })
@@ -1995,7 +1988,7 @@ function renderChart() {
             e[0].split(' ').slice(1).join(' ') + '</div>' +
           '<div style="font-size:12px;font-weight:700">' + fmt(e[1]) + '</div></div>';
       }).join('') +
-      '<button onclick="el('chartDetail').innerHTML=''" style="margin-top:10px;width:100%;padding:6px;background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer">Cerrar ×</button>' +
+      '<button onclick="el(&apos;chartDetail&apos;).innerHTML=&apos;&apos;" style="margin-top:10px;width:100%;padding:6px;background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer">Cerrar ×</button>' +
     '</div>';
   };
 }
@@ -2072,8 +2065,8 @@ function exportExcel() {
             '"'+(t.cat||'').replace(/"/g,'""')+'"', Math.abs(t.amt), t.bank||'',
             t.sharedAmt||0, t.cobrado?'Sí':'No'];
   });
-  var csv  = [headers].concat(rows).map(function(r){return r.join(',');}).join('
-');
+  var csv  = [headers].concat(rows).map(function(r){return r.join(',');}).join('\n');
+
   var blob = new Blob(['﻿'+csv], { type:'text/csv;charset=utf-8;' });
   var a    = document.createElement('a');
   a.href   = URL.createObjectURL(blob);
