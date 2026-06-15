@@ -754,7 +754,7 @@ input[type="file"] { display: none; }
     </div>
     <div class="btn-row">
       <button class="btn btn-sec" onclick="closeModal('editModal')">Cancelar</button>
-      <button class="btn" onclick="confirmEdit()" style="flex:2">✅ Guardar</button>
+      <button class="btn" onclick="doConfirmEdit()" style="flex:2">✅ Guardar</button>
     </div>
   </div>
 </div>
@@ -809,7 +809,7 @@ input[type="file"] { display: none; }
     <button class="btn btn-red" style="margin-bottom:8px" onclick="deleteTx()">🗑️ Eliminar gasto</button>
     <div class="btn-row">
       <button class="btn btn-sec" onclick="closeModal('txModal')">Cancelar</button>
-      <button class="btn" onclick="saveTx()" style="flex:2">✅ Guardar cambios</button>
+      <button class="btn" onclick="doSaveTx()" style="flex:2">✅ Guardar cambios</button>
     </div>
   </div>
 </div>
@@ -982,18 +982,23 @@ function load() {
     const raw = localStorage.getItem('bb_v3');
     if (raw) {
       const p = JSON.parse(raw);
+      // Validate data integrity
+      if (!p || typeof p !== 'object') throw new Error('Invalid data');
       S = {
-        ...DEFAULTS,
+        ...JSON.parse(JSON.stringify(DEFAULTS)),
         ...p,
         limits: { ...DEFAULTS.limits, ...(p.limits || {}) },
-        goals: p.goals && p.goals.length ? p.goals : DEFAULTS.goals,
-        transactions: p.transactions && p.transactions.length ? p.transactions : DEFAULTS.transactions,
+        goals: (p.goals && Array.isArray(p.goals) && p.goals.length) ? p.goals : JSON.parse(JSON.stringify(DEFAULTS.goals)),
+        transactions: (p.transactions && Array.isArray(p.transactions) && p.transactions.length) ? p.transactions : JSON.parse(JSON.stringify(DEFAULTS.transactions)),
       };
     } else {
       S = JSON.parse(JSON.stringify(DEFAULTS));
+      save(); // Save defaults immediately
     }
   } catch(e) {
+    console.log('Load error, using defaults:', e);
     S = JSON.parse(JSON.stringify(DEFAULTS));
+    try { localStorage.removeItem('bb_v3'); } catch(e2) {}
   }
 }
 
@@ -1141,7 +1146,7 @@ function openCatModal(cat) {
   const sorted = [...txs].sort((a, b) => Math.abs(b.amt) - Math.abs(a.amt));
   document.getElementById('cm-list').innerHTML = sorted.length
     ? sorted.map(t => `
-        <div class="tx" onclick="openTxModal(${t.id})">
+        <div class="tx" onclick="doOpenTxModal(${t.id})">
           <div class="tx-icon">${cat.split(' ')[0]}</div>
           <div class="tx-info">
             <div class="tx-desc">${t.desc}</div>
@@ -1487,7 +1492,7 @@ function renderTxList() {
   }
 
   box.innerHTML = txs.slice(0, 150).map(t => `
-    <div class="tx" onclick="openTxModal(${t.id})">
+    <div class="tx" onclick="doOpenTxModal(${t.id})">
       <div class="tx-icon">${t.cat ? t.cat.split(' ')[0] : '💳'}</div>
       <div class="tx-info">
         <div class="tx-desc">${t.desc}${t.sharedAmt > 0 ? '<span style="margin-left:6px;font-size:10px;color:var(--green);font-weight:700">' + (t.cobrado ? '✅' : '💸+' + fmt(t.sharedAmt)) + '</span>' : ''}</div>
@@ -1960,6 +1965,11 @@ function updateDailyStats() {
 // MONTH-END ALERT
 // ════════════════════════════════════════
 function checkMonthEndAlert() {
+  // Only show once per day
+  const lastAlert = localStorage.getItem('bb_last_alert');
+  const todayStr = today();
+  if (lastAlert === todayStr) return;
+  
   const now = new Date();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
   const daysLeft = daysInMonth - now.getDate();
@@ -1971,11 +1981,14 @@ function checkMonthEndAlert() {
   const budget = income - S.savingsGoal;
   const remaining = budget - spent;
   
-  if (remaining > 0) {
-    toast('⏰ Quedan ' + daysLeft + ' días del mes. Puedes gastar ' + fmt(remaining) + ' más.');
-  } else {
-    toast('🚨 Quedan ' + daysLeft + ' días y te pasaste en ' + fmt(Math.abs(remaining)));
-  }
+  localStorage.setItem('bb_last_alert', todayStr);
+  setTimeout(() => {
+    if (remaining > 0) {
+      toast('⏰ Quedan ' + daysLeft + ' días. Puedes gastar ' + fmt(remaining) + ' más.');
+    } else {
+      toast('🚨 Quedan ' + daysLeft + ' días y te pasaste en ' + fmt(Math.abs(remaining)));
+    }
+  }, 2000);
 }
 
 // ════════════════════════════════════════
@@ -2237,56 +2250,49 @@ function cobrarTx(id) {
 }
 
 function marcarCobrado() {
-  if (_editId) cobrarTx(_editId);
-  closeModal('txModal');
+  if (_editId) { cobrarTx(_editId); closeModal('txModal'); }
 }
 
-// Override confirmEdit to save shared payment data
-const _baseConfirmEdit = window.confirmEdit;
-window.confirmEdit = function() {
+// ════════════════════════════════════════
+// INTEGRATED SAVE FUNCTIONS (with shared payment support)
+// ════════════════════════════════════════
+function doConfirmEdit() {
   const name = document.getElementById('em-name').value.trim();
   const amt = parseInt(document.getElementById('em-amt').value);
   const cat = document.getElementById('em-cat').value;
-  const note = document.getElementById('em-note').value.trim();
-  const sharedAmt = _emSharedOn ? (parseInt(document.getElementById('em-shared-amt').value) || 0) : 0;
-  const sharedWho = _emSharedOn ? (document.getElementById('em-shared-who').value.trim()) : '';
+  const note = (document.getElementById('em-note')?.value || '').trim();
+  const sharedAmt = _emSharedOn ? (parseInt(document.getElementById('em-shared-amt')?.value) || 0) : 0;
+  const sharedWho = _emSharedOn ? (document.getElementById('em-shared-who')?.value || '').trim() : '';
   if (!name || !amt) { toast('⚠️ Completa nombre y monto'); return; }
 
   const dup = S.transactions.find(t =>
     t.desc.toLowerCase() === name.toLowerCase() &&
     Math.abs(t.amt) === amt &&
-    t.date === (_editingNew.date || today())
+    t.date === (_editingNew?.date || today())
   );
   if (dup && !confirm('Ya existe "' + name + '" · ' + fmt(amt) + ' hoy. ¿Agregar igual?')) return;
 
-  // Real cost to Hernán = total - what others owe him
   const myAmt = sharedAmt > 0 ? amt - sharedAmt : amt;
-
   S.transactions.push({
-    id: nextId(),
-    desc: name,
-    amt: -Math.abs(myAmt),
-    totalAmt: amt,
-    cat, note,
-    sharedAmt: sharedAmt,
-    sharedWho: sharedWho,
-    cobrado: false,
-    date: _editingNew.date || today(),
-    bank: _editingNew.bank || 'manual'
+    id: nextId(), desc: name, amt: -Math.abs(myAmt),
+    totalAmt: amt, cat, note, sharedAmt, sharedWho,
+    cobrado: false, date: _editingNew?.date || today(),
+    bank: _editingNew?.bank || 'manual'
   });
   save(); renderAll();
   closeModal('editModal');
 
-  // Reset shared toggle
   _emSharedOn = false;
-  const toggle = document.getElementById('em-shared-toggle');
-  const fields = document.getElementById('em-shared-fields');
-  if (toggle) toggle.className = 'toggle';
-  if (fields) fields.style.display = 'none';
+  const emToggle = document.getElementById('em-shared-toggle');
+  const emFields = document.getElementById('em-shared-fields');
+  if (emToggle) emToggle.className = 'toggle';
+  if (emFields) emFields.style.display = 'none';
 
-  if (_editingNew.bank === 'manual') {
-    document.getElementById('entryDesc').value = '';
-    document.getElementById('entryAmt').value = '';
+  if (_editingNew?.bank === 'manual') {
+    const d = document.getElementById('entryDesc');
+    const a = document.getElementById('entryAmt');
+    if (d) d.value = '';
+    if (a) a.value = '';
   }
 
   _qIdx++;
@@ -2297,66 +2303,53 @@ window.confirmEdit = function() {
     _queue = []; _qIdx = 0; _editingNew = null;
     toast('✅ Guardado' + (sharedAmt > 0 ? ' · Te deben ' + fmt(sharedAmt) : ''));
   }
-};
+}
 
-// Override saveTx to save shared data
-const _baseSaveTx = window.saveTx;
-window.saveTx = function() {
+function doSaveTx() {
   const name = document.getElementById('tm-name').value.trim();
   const amt = parseInt(document.getElementById('tm-amt').value);
   const cat = document.getElementById('tm-cat').value;
-  const note = document.getElementById('tm-note').value.trim();
-  const sharedAmt = _tmSharedOn ? (parseInt(document.getElementById('tm-shared-amt').value) || 0) : 0;
-  const sharedWho = _tmSharedOn ? (document.getElementById('tm-shared-who').value.trim()) : '';
+  const note = (document.getElementById('tm-note')?.value || '').trim();
+  const sharedAmt = _tmSharedOn ? (parseInt(document.getElementById('tm-shared-amt')?.value) || 0) : 0;
+  const sharedWho = _tmSharedOn ? (document.getElementById('tm-shared-who')?.value || '').trim() : '';
   if (!name || !amt) { toast('⚠️ Completa nombre y monto'); return; }
   const idx = S.transactions.findIndex(x => x.id === _editId);
   if (idx < 0) return;
   const myAmt = sharedAmt > 0 ? amt - sharedAmt : amt;
-  S.transactions[idx] = {
-    ...S.transactions[idx],
-    desc: name, amt: -Math.abs(myAmt),
-    totalAmt: amt, cat, note,
-    sharedAmt, sharedWho,
-  };
+  S.transactions[idx] = { ...S.transactions[idx], desc: name, amt: -Math.abs(myAmt), totalAmt: amt, cat, note, sharedAmt, sharedWho };
   save(); renderAll(); closeModal('txModal');
   toast('✅ Actualizado' + (sharedAmt > 0 ? ' · Te deben ' + fmt(sharedAmt) : ''));
-
   _tmSharedOn = false;
-  const toggle = document.getElementById('tm-shared-toggle');
-  const fields = document.getElementById('tm-shared-fields');
-  if (toggle) toggle.className = 'toggle';
-  if (fields) fields.style.display = 'none';
-};
+  const tmToggle = document.getElementById('tm-shared-toggle');
+  const tmFields = document.getElementById('tm-shared-fields');
+  if (tmToggle) tmToggle.className = 'toggle';
+  if (tmFields) tmFields.style.display = 'none';
+}
 
-// Override openTxModal to show shared data
-const _baseOpenTxModal = window.openTxModal;
-window.openTxModal = function(id) {
+function doOpenTxModal(id) {
   const t = S.transactions.find(x => x.id === id);
   if (!t) return;
   _editId = id;
   document.getElementById('tm-name').value = t.desc || '';
   document.getElementById('tm-amt').value = Math.abs(t.totalAmt || t.amt) || '';
-  document.getElementById('tm-cat').value = t.cat || '📦 Otros';
-  document.getElementById('tm-note').value = t.note || '';
-
-  // Restore shared state
+  document.getElementById('tm-cat').value = t.cat || '📦 Outros';
+  if (document.getElementById('tm-note')) document.getElementById('tm-note').value = t.note || '';
   _tmSharedOn = !!(t.sharedAmt > 0);
-  const toggle = document.getElementById('tm-shared-toggle');
-  const fields = document.getElementById('tm-shared-fields');
-  const cobradoSection = document.getElementById('tm-cobrado-section');
-  if (toggle) toggle.className = 'toggle' + (_tmSharedOn ? ' on' : '');
-  if (fields) {
-    fields.style.display = _tmSharedOn ? 'block' : 'none';
-    if (_tmSharedOn) {
+  const tmToggle = document.getElementById('tm-shared-toggle');
+  const tmFields = document.getElementById('tm-shared-fields');
+  const cobSection = document.getElementById('tm-cobrado-section');
+  if (tmToggle) tmToggle.className = 'toggle' + (_tmSharedOn ? ' on' : '');
+  if (tmFields) {
+    tmFields.style.display = _tmSharedOn ? 'block' : 'none';
+    if (_tmSharedOn && document.getElementById('tm-shared-amt')) {
       document.getElementById('tm-shared-amt').value = t.sharedAmt || '';
       document.getElementById('tm-shared-who').value = t.sharedWho || '';
     }
   }
-  if (cobradoSection) cobradoSection.style.display = (t.sharedAmt > 0 && !t.cobrado) ? 'block' : 'none';
-
+  if (cobSection) cobSection.style.display = (t.sharedAmt > 0 && !t.cobrado) ? 'block' : 'none';
   closeModal('catModal');
-  setTimeout(() => openModal('txModal'), 200);
-};
+  setTimeout(() => openModal('txModal'), 150);
+}
 
 try { init(); } catch(e) { console.error('Init error:', e); }
 </script>
