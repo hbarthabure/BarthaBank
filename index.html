@@ -835,30 +835,30 @@ var _memStore = {};
 var _storageAvailable = (function() {
   try {
     var t = '__bb_test__';
-    SafeStorage.setItem(t, '1');
-    SafeStorage.removeItem(t);
+    localStorage.setItem(t, '1');
+    localStorage.removeItem(t);
     return true;
   } catch(e) { return false; }
 })();
 var SafeStorage = {
   getItem: function(k) {
-    if (_storageAvailable) { try { return SafeStorage.getItem(k); } catch(e) {} }
+    if (_storageAvailable) { try { return localStorage.getItem(k); } catch(e) {} }
     return _memStore[k] !== undefined ? _memStore[k] : null;
   },
   setItem: function(k, v) {
     _memStore[k] = v;
-    if (_storageAvailable) { try { SafeStorage.setItem(k, v); } catch(e) {} }
+    if (_storageAvailable) { try { localStorage.setItem(k, v); } catch(e) {} }
   },
   removeItem: function(k) {
     delete _memStore[k];
-    if (_storageAvailable) { try { SafeStorage.removeItem(k); } catch(e) {} }
+    if (_storageAvailable) { try { localStorage.removeItem(k); } catch(e) {} }
   },
   get length() {
-    if (_storageAvailable) { try { return SafeStorage.length; } catch(e) {} }
+    if (_storageAvailable) { try { return localStorage.length; } catch(e) {} }
     return Object.keys(_memStore).length;
   },
   key: function(i) {
-    if (_storageAvailable) { try { return SafeStorage.key(i); } catch(e) {} }
+    if (_storageAvailable) { try { return localStorage.key(i); } catch(e) {} }
     return Object.keys(_memStore)[i] || null;
   }
 };
@@ -1463,10 +1463,15 @@ function confirmEdit() {
   var txBank = (_editingNew && _editingNew.bank) ? _editingNew.bank : 'manual';
 
   var dup = S.transactions.find(function(t) {
-    return t.desc.toLowerCase() === name.toLowerCase() &&
-           Math.abs(t.amt) === amt && t.date === txDate;
+    if (Math.abs(t.amt) !== amt) return false;
+    if (t.desc.toLowerCase() !== name.toLowerCase()) return false;
+    var d1 = new Date(t.date), d2 = new Date(txDate);
+    return Math.abs((d1 - d2) / 86400000) <= 7;
   });
-  if (dup && !confirm('Ya existe "' + name + '" · ' + fmt(amt) + ' hoy. ¿Agregar igual?')) return;
+  if (dup) {
+    var msg = '⚠️ DUPLICADO DETECTADO\n\n"' + name + '" de ' + fmt(amt) + ' ya existe el ' + dup.date + ' (' + dup.bank + ').\n\n¿Estás seguro que quieres agregar este gasto igual?';
+    if (!window.confirm(msg)) return;
+  }
 
   var myAmt = sharedAmt > 0 ? amt - sharedAmt : amt;
   S.transactions.push({
