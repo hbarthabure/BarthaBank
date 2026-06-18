@@ -1469,8 +1469,20 @@ function confirmEdit() {
     return Math.abs((d1 - d2) / 86400000) <= 7;
   });
   if (dup) {
-    var msg = '⚠️ DUPLICADO DETECTADO\n\n"' + name + '" de ' + fmt(amt) + ' ya existe el ' + dup.date + ' (' + dup.bank + ').\n\n¿Estás seguro que quieres agregar este gasto igual?';
-    if (!window.confirm(msg)) return;
+    var msg = '⚠️ DUPLICADO DETECTADO\n\n"' + name + '" de ' + fmt(amt) + ' ya existe el ' + dup.date + ' (' + dup.bank + ').\n\n¿Agregar igual?';
+    if (!window.confirm(msg)) {
+      // Skip this one, go to next in queue
+      closeModal('editModal');
+      _qIdx++;
+      if (_qIdx < _queue.length) {
+        setTimeout(function() { openEditModal(_queue[_qIdx]); }, 300);
+        toast('⏭️ Duplicado omitido · ' + (_queue.length - _qIdx) + ' más');
+      } else {
+        _queue = []; _qIdx = 0; _editingNew = null;
+        toast('✅ Listo — duplicado omitido');
+      }
+      return;
+    }
   }
 
   var myAmt = sharedAmt > 0 ? amt - sharedAmt : amt;
